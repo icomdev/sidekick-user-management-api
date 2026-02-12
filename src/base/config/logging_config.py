@@ -1,9 +1,9 @@
 import logging
 import os
 
-from src.base.utils.env_utils import is_local_development
-from src.base.middleware.correlation_middleware import CorrelationFilter
 from src.base.config.splunk_handler import AsyncSplunkHECHandler
+from src.base.middleware.correlation_middleware import CorrelationFilter
+from src.base.utils.env_utils import is_local_development
 
 
 class ColoredFormatter(logging.Formatter):

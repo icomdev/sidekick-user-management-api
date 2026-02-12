@@ -11,9 +11,15 @@ def _user_header(user: User) -> dict[str, str]:
     return {"X-Test-User": json.dumps(user.model_dump())}
 
 
-SUPERADMIN = User(id="sa-001", email="admin@test.com", name="Super Admin", is_superadmin=True)
-REGULAR_USER = User(id="user-001", email="user@test.com", name="Regular User", is_superadmin=False)
-OTHER_USER = User(id="user-002", email="other@test.com", name="Other User", is_superadmin=False)
+SUPERADMIN = User(
+    id="sa-001", email="admin@test.com", name="Super Admin", is_superadmin=True
+)
+REGULAR_USER = User(
+    id="user-001", email="user@test.com", name="Regular User", is_superadmin=False
+)
+OTHER_USER = User(
+    id="user-002", email="other@test.com", name="Other User", is_superadmin=False
+)
 
 
 # ── require_superadmin ──────────────────────────────────────────────
@@ -60,12 +66,16 @@ async def _seed_group_and_membership(db_session, entra_object_id: str, role: Gro
 
 class TestRequireGroupAdmin:
     async def test_superadmin_bypasses_group_check(self, client):
-        resp = await client.get("/groups/999/admin-only", headers=_user_header(SUPERADMIN))
+        resp = await client.get(
+            "/groups/999/admin-only", headers=_user_header(SUPERADMIN)
+        )
         assert resp.status_code == 200
         assert resp.json()["user_id"] == SUPERADMIN.id
 
     async def test_group_admin_allowed(self, client, db_session):
-        group_id = await _seed_group_and_membership(db_session, REGULAR_USER.id, GroupRole.ADMIN)
+        group_id = await _seed_group_and_membership(
+            db_session, REGULAR_USER.id, GroupRole.ADMIN
+        )
         resp = await client.get(
             f"/groups/{group_id}/admin-only", headers=_user_header(REGULAR_USER)
         )
@@ -73,14 +83,18 @@ class TestRequireGroupAdmin:
         assert resp.json()["user_id"] == REGULAR_USER.id
 
     async def test_group_user_forbidden(self, client, db_session):
-        group_id = await _seed_group_and_membership(db_session, REGULAR_USER.id, GroupRole.USER)
+        group_id = await _seed_group_and_membership(
+            db_session, REGULAR_USER.id, GroupRole.USER
+        )
         resp = await client.get(
             f"/groups/{group_id}/admin-only", headers=_user_header(REGULAR_USER)
         )
         assert resp.status_code == 403
 
     async def test_no_membership_forbidden(self, client, db_session):
-        group_id = await _seed_group_and_membership(db_session, OTHER_USER.id, GroupRole.ADMIN)
+        group_id = await _seed_group_and_membership(
+            db_session, OTHER_USER.id, GroupRole.ADMIN
+        )
         resp = await client.get(
             f"/groups/{group_id}/admin-only", headers=_user_header(REGULAR_USER)
         )

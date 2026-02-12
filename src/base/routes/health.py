@@ -26,6 +26,18 @@ async def health(request: Request):
             result["database"] = "unavailable"
             result["status"] = "Degraded"
 
+    redis_client = getattr(request.app.state, "redis_client", None)
+    if redis_client is None:
+        result["redis"] = "not configured"
+    else:
+        try:
+            await redis_client.ping()
+            result["redis"] = "connected"
+        except Exception:
+            logger.exception("Redis health check failed")
+            result["redis"] = "unavailable"
+            result["status"] = "Degraded"
+
     return JSONResponse(status_code=200, content=result)
 
 
