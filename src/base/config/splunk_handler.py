@@ -21,7 +21,13 @@ class AsyncSplunkHECHandler(logging.Handler):
     """
 
     def __init__(
-        self, host: str, token: str, url: str, application_name: str, timeout=2, max_queue_size=1000
+        self,
+        host: str,
+        token: str,
+        url: str,
+        application_name: str,
+        timeout=2,
+        max_queue_size=1000,
     ):
         super().__init__()
         self.host = host
@@ -89,7 +95,9 @@ class AsyncSplunkHECHandler(logging.Handler):
         }
 
         if record.exc_info:
-            payload["event"]["Exception"] = "".join(traceback.format_exception(*record.exc_info))
+            payload["event"]["Exception"] = "".join(
+                traceback.format_exception(*record.exc_info)
+            )
 
         return payload
 

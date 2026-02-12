@@ -37,5 +37,3 @@ app.add_middleware(GlobalExceptionHandlerMiddleware)
 # --- Routes ---
 app.include_router(health_router, prefix="/api")
 app.include_router(rest_router, prefix="/api")
-app.include_router(health_router, prefix="/api")
-app.include_router(rest_router, prefix="/api")

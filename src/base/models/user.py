@@ -23,10 +23,16 @@ class User(BaseModel):
         scopes: List of scopes/permissions granted to the user (from 'scp' claim)
     """
 
-    id: str | None = Field(None, description="Unique identifier for the user (Azure AD object ID)")
-    email: str | None = Field(None, description="User's email address or preferred username")
+    id: str | None = Field(
+        None, description="Unique identifier for the user (Azure AD object ID)"
+    )
+    email: str | None = Field(
+        None, description="User's email address or preferred username"
+    )
     name: str | None = Field(None, description="User's display name")
-    roles: list[str] = Field(default_factory=list, description="List of roles assigned to the user")
+    roles: list[str] = Field(
+        default_factory=list, description="List of roles assigned to the user"
+    )
     scopes: list[str] = Field(
         default_factory=list,
         description="List of scopes/permissions granted to the user",
