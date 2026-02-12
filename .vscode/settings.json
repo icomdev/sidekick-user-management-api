@@ -1,0 +1,31 @@
+{
+    // Python settings
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    },
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/src"
+    ],
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.terminal.activateEnvironment": true,
+
+    // ------------------------
+    // Ruff (formatter + lint)
+    // ------------------------
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "always",
+            "source.organizeImports": "always"
+        }
+    },
+
+    // Ruff-specific behavior
+    "ruff.fixAll": true,
+    "ruff.organizeImports": true,
+
+    // Editor behavior
+    "editor.formatOnSaveMode": "modifications",
+}
