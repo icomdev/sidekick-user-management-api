@@ -18,4 +18,4 @@ class Role(Enum):
         try:
             return cls(role_str.lower())
         except ValueError:
-            raise ValueError(f"Invalid role: {role_str}")
+            raise ValueError(f"Invalid role: {role_str}") from None
