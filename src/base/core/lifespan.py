@@ -6,6 +6,7 @@ from fastapi import FastAPI
 import src.domain.models.entities  # noqa: F401 — register ORM models with Base.metadata
 from src.base.config.database import close_db, init_db
 from src.base.config.logging_config import LoggingConfig
+from src.domain.services.agent_service import AgentService
 from src.domain.services.example_service import ExampleService
 from src.domain.services.group_service import GroupService
 from src.domain.services.membership_service import MembershipService
@@ -31,6 +32,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize registries/services
     logger.info("Initializing services...")
+    app.state.agent_service = AgentService()
     app.state.example_service = ExampleService()
     app.state.group_service = GroupService()
     app.state.membership_service = MembershipService()
