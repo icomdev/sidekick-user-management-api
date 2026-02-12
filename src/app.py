@@ -2,6 +2,7 @@ import logging
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.base.config.logging_config import LoggingConfig
 from src.base.config.openapi_config import setup_openapi
@@ -28,7 +29,9 @@ logger = logging.getLogger(__name__)
 logger.info("Starting FastAPI application")
 
 # --- FastAPI app ---
-app = FastAPI(title="FastAPI OpenAPI Playground", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Sidekick User Management Platform", version="1.0.0", lifespan=lifespan
+)
 
 # Setup OpenAPI configuration
 setup_openapi(app)
@@ -37,6 +40,15 @@ setup_openapi(app)
 app.add_middleware(JWTMiddleware)
 app.add_middleware(CorrelationMiddleware)
 app.add_middleware(GlobalExceptionHandlerMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Routes ---
 app.include_router(admin_router, prefix="/api")
