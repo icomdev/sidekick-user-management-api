@@ -17,6 +17,8 @@ from src.domain.models.agent_schemas import (
     AgentResponse,
     AssignAgentToGroupRequest,
     RegisterAgentRequest,
+    UserAgentListResponse,
+    UserAgentResponse,
 )
 from src.domain.models.entities.enums import GroupRole
 from src.domain.models.entities.group_membership import GroupMembership
@@ -30,6 +32,7 @@ logger = logging.getLogger(__name__)
 ERROR_MAP = {
     "group_not_found": (status.HTTP_404_NOT_FOUND, "Group not found"),
     "agent_not_found": (status.HTTP_404_NOT_FOUND, "Agent not found"),
+    "user_not_found": (status.HTTP_404_NOT_FOUND, "User not found"),
     "assignment_not_found": (
         status.HTTP_404_NOT_FOUND,
         "Agent is not assigned to this group",
@@ -188,3 +191,50 @@ async def get_admin_groups(
 
     groups = await service.get_admin_groups(session, entra_object_id)
     return GroupListResponse(groups=[GroupResponse.model_validate(g) for g in groups])
+
+
+@router.get(
+    "/users/{entra_object_id}/agents", response_model=UserAgentListResponse
+)
+async def get_user_agents(
+    entra_object_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    service: AgentService = Depends(get_agent_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Return all agents accessible to a user across their group memberships.
+
+    Used by the core platform to populate the agent selector.
+    Users can query their own agents; superadmins can query any user's.
+    """
+    if not user.is_superadmin and user.id != entra_object_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot view another user's agents",
+        )
+
+    # Check cache first
+    cached = await permission_service.get_cached_user_agents(entra_object_id)
+    if cached is not None:
+        return UserAgentListResponse(
+            agents=[UserAgentResponse(**a) for a in cached]
+        )
+
+    # Only treat as superadmin when querying own agents
+    querying_self = user.id == entra_object_id
+    try:
+        agents = await service.get_user_agents(
+            session,
+            entra_object_id,
+            is_superadmin=user.is_superadmin and querying_self,
+        )
+    except ValueError as e:
+        _handle_service_error(e)
+
+    # Cache the result
+    await permission_service.set_cached_user_agents(entra_object_id, agents)
+
+    return UserAgentListResponse(
+        agents=[UserAgentResponse(**a) for a in agents]
+    )

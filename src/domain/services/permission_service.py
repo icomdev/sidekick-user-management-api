@@ -93,8 +93,37 @@ class PermissionService:
         await self._set_cached(key, True, highest)
         return True, highest
 
+    def _user_agents_key(self, user_id: str) -> str:
+        return f"user_agents:{user_id}"
+
+    async def get_cached_user_agents(self, user_id: str) -> list[dict] | None:
+        """Return cached user agents list, or None if not cached."""
+        if not self._redis:
+            return None
+        try:
+            value = await self._redis.get(self._user_agents_key(user_id))
+            if value is not None:
+                return json.loads(value)
+        except Exception:
+            logger.warning("Redis cache read failed for user agents", exc_info=True)
+        return None
+
+    async def set_cached_user_agents(
+        self, user_id: str, agents: list[dict]
+    ) -> None:
+        """Cache the user agents list."""
+        if not self._redis:
+            return
+        try:
+            value = json.dumps(agents, default=str)
+            await self._redis.set(
+                self._user_agents_key(user_id), value, ex=CACHE_TTL_SECONDS
+            )
+        except Exception:
+            logger.warning("Redis cache write failed for user agents", exc_info=True)
+
     async def invalidate_user_permissions(self, user_id: str) -> None:
-        """Delete all cached permissions for a user."""
+        """Delete all cached permissions and user agents list for a user."""
         if not self._redis:
             return
         try:
@@ -108,13 +137,15 @@ class PermissionService:
                     await self._redis.delete(*keys)
                 if cursor == 0:
                     break
+            # Also invalidate user agents cache
+            await self._redis.delete(self._user_agents_key(user_id))
         except Exception:
             logger.warning(
                 "Redis invalidation failed for user %s", user_id, exc_info=True
             )
 
     async def invalidate_agent_permissions(self, agent_id: int) -> None:
-        """Delete all cached permissions for an agent."""
+        """Delete all cached permissions for an agent and affected user agent lists."""
         if not self._redis:
             return
         try:
@@ -123,6 +154,17 @@ class PermissionService:
             while True:
                 cursor, keys = await self._redis.scan(
                     cursor=cursor, match=pattern, count=100
+                )
+                if keys:
+                    await self._redis.delete(*keys)
+                if cursor == 0:
+                    break
+            # Invalidate all user agent list caches since we can't know
+            # which users are affected by agent-group changes
+            cursor = 0
+            while True:
+                cursor, keys = await self._redis.scan(
+                    cursor=cursor, match="user_agents:*", count=100
                 )
                 if keys:
                     await self._redis.delete(*keys)

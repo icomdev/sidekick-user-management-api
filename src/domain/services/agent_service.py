@@ -9,6 +9,7 @@ from src.domain.models.entities.enums import GroupRole
 from src.domain.models.entities.group import Group
 from src.domain.models.entities.group_agent import GroupAgent
 from src.domain.models.entities.group_membership import GroupMembership
+from src.domain.models.entities.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -151,3 +152,66 @@ class AgentService:
             )
         )
         return list(result.scalars().all())
+
+    async def get_user_agents(
+        self,
+        session: AsyncSession,
+        entra_object_id: str,
+        *,
+        is_superadmin: bool = False,
+    ) -> list[dict]:
+        """Return all agents accessible to a user with their group info.
+
+        For superadmins, returns all agents with all their group assignments.
+        For regular users, returns agents from groups they belong to.
+
+        Returns a list of dicts with agent fields plus a 'groups' list.
+        """
+        if is_superadmin:
+            # Superadmins see all agents with all group assignments
+            result = await session.execute(
+                select(Agent, Group.id, Group.name)
+                .join(GroupAgent, GroupAgent.agent_id == Agent.id)
+                .join(Group, Group.id == GroupAgent.group_id)
+                .order_by(Agent.id, Group.id)
+            )
+        else:
+            # Verify user exists
+            user_result = await session.execute(
+                select(User).where(User.entra_object_id == entra_object_id)
+            )
+            if user_result.scalar_one_or_none() is None:
+                raise ValueError("user_not_found")
+
+            # Regular users see agents from their groups
+            result = await session.execute(
+                select(Agent, Group.id, Group.name)
+                .join(GroupAgent, GroupAgent.agent_id == Agent.id)
+                .join(Group, Group.id == GroupAgent.group_id)
+                .join(
+                    GroupMembership,
+                    GroupMembership.group_id == GroupAgent.group_id,
+                )
+                .where(GroupMembership.entra_object_id == entra_object_id)
+                .order_by(Agent.id, Group.id)
+            )
+
+        rows = result.all()
+
+        # Deduplicate agents and collect their groups
+        agents_map: dict[int, dict] = {}
+        for agent, group_id, group_name in rows:
+            if agent.id not in agents_map:
+                agents_map[agent.id] = {
+                    "id": agent.id,
+                    "agent_external_id": agent.agent_external_id,
+                    "name": agent.name,
+                    "created_by": agent.created_by,
+                    "created_at": agent.created_at,
+                    "groups": [],
+                }
+            group_entry = {"group_id": group_id, "group_name": group_name}
+            if group_entry not in agents_map[agent.id]["groups"]:
+                agents_map[agent.id]["groups"].append(group_entry)
+
+        return list(agents_map.values())
